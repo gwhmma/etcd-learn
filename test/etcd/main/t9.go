@@ -12,6 +12,7 @@ func main() {
 	var config clientv3.Config
 	var client *clientv3.Client
 	var err error
+	var leaseID clientv3.LeaseID
 
 	config = clientv3.Config{
 		Endpoints:   []string{"127.0.0.1:2379"}, //集群列表
@@ -24,9 +25,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	//kv 用于读取集群的键值对
-	kv := clientv3.NewKV(client)
+	//lease实现自动过期
+	//op操作
+	//txn事务  if else then
 
+	// 1. 上锁: 创建租约 自动续租 拿着租约去抢占一个key
 	//申请一个lease(租约)
 	lease := clientv3.NewLease(client)
 	//申请10s的lease
@@ -35,11 +38,13 @@ func main() {
 		return
 	} else {
 		// 首先拿到lease的id
-		leaseID := resp.ID
+		leaseID = resp.ID
 
 		//取消自动续租
-		ctx, _ := context.WithTimeout(context.TODO(), 5 * time.Second)
-
+		ctx, cancelFunc := context.WithCancel(context.TODO())
+		// 确保函数退出后 自动续租会停止
+		defer cancelFunc()
+		defer lease.Revoke(context.TODO(), leaseID)
 		//续租了5秒，停止了续租 10s的生命期  总共15s的生命期
 
 		// 自动续租   5s 后会取消自动续租
@@ -64,30 +69,37 @@ func main() {
 			END:
 			}()
 		}
+	}
 
-		//put一个kv让它与租约关联起来 让它10s后自动过期
-		if putResp, err := kv.Put(context.TODO(), "/cron/lock/job1", "lock1", clientv3.WithLease(leaseID)); err != nil {
-			fmt.Println(err)
+	// 2. 处理业务
+
+	// if 不存在key then 设置这个key else 抢锁失败
+	//kv 用于读取集群的键值对
+	kv := clientv3.NewKV(client)
+	//创建事务
+	txn := kv.Txn(context.TODO())
+	//定义事务
+	txn.If(clientv3.Compare(clientv3.CreateRevision("/cron/lock/job9"), "=", 0)).
+		Then(clientv3.OpPut("/cron/lock/job9", "xxx", clientv3.WithLease(leaseID))).
+		Else(clientv3.OpGet("/cron/lock/job9")) //否则抢锁失败
+
+	//提交事务
+	if txnResp, err := txn.Commit(); err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		//判断是否抢到了锁
+		if !txnResp.Succeeded {
+			fmt.Println("锁被占用 ", string(txnResp.Responses[0].GetResponseRange().Kvs[0].Value))
 			return
-		} else {
-			fmt.Println(putResp.Header.Revision)
-
-			// 检查kv是否过期
-			for {
-				//将put进去的kv拿出来
-				if getResp, err := kv.Get(context.TODO(), "/cron/lock/job1"); err != nil {
-					fmt.Println(err)
-					return
-				} else {
-					if getResp.Count == 0 {
-						fmt.Println("过期了")
-						break
-					}
-					fmt.Println("还没过期 ", getResp.Kvs)
-					time.Sleep(2 * time.Second)
-				}
-			}
 		}
 
+		//处理业务
+		fmt.Println("处理任务")
+		time.Sleep(5 * time.Second)
 	}
+
+	// 3. 释放锁: 取消自动续租 释放租约
+	// defer会把租约释放  关联的kv就被删除了
+
 }
