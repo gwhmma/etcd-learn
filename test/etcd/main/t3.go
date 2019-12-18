@@ -27,7 +27,7 @@ func main()  {
 	//kv 用于读取集群的键值对
 	kv := clientv3.NewKV(client)
 
-	if resp, err := kv.Get(context.TODO(), "/cron/jobs/job1", clientv3.WithCountOnly()); err != nil {
+	if resp, err := kv.Get(context.TODO(), "/crontab/jobs/job1", clientv3.WithCountOnly()); err != nil {
 		fmt.Println(err)
 	} else {
 		fmt.Println(resp.Kvs, resp.Count)

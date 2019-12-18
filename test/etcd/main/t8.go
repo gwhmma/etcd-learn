@@ -28,7 +28,7 @@ func main()  {
 	kv := clientv3.NewKV(client)
 
 	//创建op operation
-	putOP := clientv3.OpPut("/cron/jobs/job3","job3")
+	putOP := clientv3.OpPut("/crontab/jobs/job3","job3")
 	//执行Op
 	if opResp, err := kv.Do(context.TODO(), putOP); err != nil {
 		fmt.Println(err)
@@ -37,7 +37,7 @@ func main()  {
 		fmt.Println("写入Revision", opResp.Put().Header.Revision )
 	}
 
-	getOp := clientv3.OpGet("/cron/jobs/job3")
+	getOp := clientv3.OpGet("/crontab/jobs/job3")
 	if getResp, err := kv.Do(context.TODO(), getOp); err != nil {
 		fmt.Println(err)
 		return

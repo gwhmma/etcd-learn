@@ -79,9 +79,9 @@ func main() {
 	//创建事务
 	txn := kv.Txn(context.TODO())
 	//定义事务
-	txn.If(clientv3.Compare(clientv3.CreateRevision("/cron/lock/job9"), "=", 0)).
-		Then(clientv3.OpPut("/cron/lock/job9", "xxx", clientv3.WithLease(leaseID))).
-		Else(clientv3.OpGet("/cron/lock/job9")) //否则抢锁失败
+	txn.If(clientv3.Compare(clientv3.CreateRevision("/crontab/lock/job9"), "=", 0)).
+		Then(clientv3.OpPut("/crontab/lock/job9", "xxx", clientv3.WithLease(leaseID))).
+		Else(clientv3.OpGet("/crontab/lock/job9")) //否则抢锁失败
 
 	//提交事务
 	if txnResp, err := txn.Commit(); err != nil {

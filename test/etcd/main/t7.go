@@ -31,14 +31,14 @@ func main() {
 	// 模拟etcd中kv的变化
 	go func() {
 		for {
-			kv.Put(context.TODO(), "/cron/jobs/job4", "i am job4")
-			kv.Delete(context.TODO(), "/cron/jobs/job4")
+			kv.Put(context.TODO(), "/crontab/jobs/job4", "i am job4")
+			kv.Delete(context.TODO(), "/crontab/jobs/job4")
 			time.Sleep(time.Second)
 		}
 	}()
 
 	//先得到当前值， 并监听变化
-	if getResp, err := kv.Get(context.TODO(), "/cron/jobs/job4"); err != nil {
+	if getResp, err := kv.Get(context.TODO(), "/crontab/jobs/job4"); err != nil {
 		fmt.Println(err)
 		return
 	} else {
@@ -61,7 +61,7 @@ func main() {
 			cancelFuc()
 		})
 
-		watchChan := watcer.Watch(ctx, "/cron/jobs/job4", clientv3.WithRev(watchRevsionStart))
+		watchChan := watcer.Watch(ctx, "/crontab/jobs/job4", clientv3.WithRev(watchRevsionStart))
 		//监听kv变化
 		for watchResp := range watchChan {
 			for _, event := range watchResp.Events {

@@ -43,7 +43,7 @@ func main() {
 	}
 
 	//2 选择数据库 my_db
-	database = client.Database("cron")
+	database = client.Database("crontab")
 	//3 选择表 gwh
 	collection = database.Collection("log")
 	//4  bson   按照jobName过滤, 找出jobName=job10, 找出5条

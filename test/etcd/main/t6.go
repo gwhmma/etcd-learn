@@ -66,7 +66,7 @@ func main() {
 		}
 
 		//put一个kv让它与租约关联起来 让它10s后自动过期
-		if putResp, err := kv.Put(context.TODO(), "/cron/lock/job1", "lock1", clientv3.WithLease(leaseID)); err != nil {
+		if putResp, err := kv.Put(context.TODO(), "/crontab/lock/job1", "lock1", clientv3.WithLease(leaseID)); err != nil {
 			fmt.Println(err)
 			return
 		} else {
@@ -75,7 +75,7 @@ func main() {
 			// 检查kv是否过期
 			for {
 				//将put进去的kv拿出来
-				if getResp, err := kv.Get(context.TODO(), "/cron/lock/job1"); err != nil {
+				if getResp, err := kv.Get(context.TODO(), "/crontab/lock/job1"); err != nil {
 					fmt.Println(err)
 					return
 				} else {
