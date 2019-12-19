@@ -1,7 +1,7 @@
 package worker
 
 import (
-	"context"
+	"math/rand"
 	"os/exec"
 	"time"
 )
@@ -22,9 +22,8 @@ type JobExecuteResult struct {
 var Exe *Executor
 
 //初始化执行器
-func InitExecutor() error {
+func InitExecutor() {
 	Exe = &Executor{}
-	return nil
 }
 
 // 执行一个任务
@@ -37,6 +36,7 @@ func (e *Executor) executeJob(exeInfo *JobExecuteInfo) {
 
 		// 首先获取分布式锁
 		// 初始化分布式锁
+		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 		start := time.Now()
 		jobLock := Etcd.createJobLock(exeInfo.Job.Name)
 		err := jobLock.tryLock()
@@ -49,7 +49,7 @@ func (e *Executor) executeJob(exeInfo *JobExecuteInfo) {
 		} else {
 			//执行shell命令
 			exeRes.startTime = start
-			cmd := exec.CommandContext(context.TODO(), "/bin/bash", "-c", exeInfo.Job.Command)
+			cmd := exec.CommandContext(exeInfo.Ctx, "/bin/bash", "-c", exeInfo.Job.Command)
 			//执行命令并捕获错误
 			res, err := cmd.CombinedOutput()
 			exeRes.output = res

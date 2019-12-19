@@ -13,6 +13,7 @@ func InitEnv() {
 }
 
 var etcdConfig = flag.String("e", "conf/etcd-work.toml", "worker节点的etcd配置")
+var mongoConfig = flag.String("m", "conf/mongo.toml", "mongoDB 配置路径")
 
 func main() {
 	flag.Parse()
@@ -20,17 +21,17 @@ func main() {
 	// 初始化线程
 	InitEnv()
 
-	// 初始化任务执行器
-	if err := InitExecutor(); err != nil {
-		fmt.Println("init executor err : ", err)
+	//初始化mongo存储日志
+	if err := InitLogSink(*mongoConfig); err != nil {
+		fmt.Println("mongo init err : ", err)
 		return
 	}
 
+	// 初始化任务执行器
+	InitExecutor()
+
 	// 初始化任务调度器
-	if err := InitScheduler(); err != nil {
-		fmt.Println("init schedule err : " ,err)
-		return
-	}
+	InitScheduler()
 
 	//初始化任务管理器
 	InitEtcdManager(*etcdConfig)

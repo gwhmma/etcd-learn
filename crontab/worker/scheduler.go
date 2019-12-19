@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"etcd-learn/crontab/common"
 	"fmt"
 	"github.com/gorhill/cronexpr"
@@ -24,15 +25,28 @@ type JobSchedulePlan struct {
 
 // 任务执行状态
 type JobExecuteInfo struct {
-	Job      *Job      //任务信息
-	PlanTime time.Time //计划执行时间
-	RealTime time.Time //实际执行时间
+	Job        *Job               //任务信息
+	PlanTime   time.Time          //计划执行时间
+	RealTime   time.Time          //实际执行时间
+	Ctx        context.Context    // 取消command执行的context
+	CancelFunc context.CancelFunc //取消command的cancel函数
+}
+
+type JobLog struct {
+	JobName      string `bson:"jobName"`      //任务名
+	Command      string `bson:"command"`      // 执行的命令
+	OutPut       string `bson:"outPut"`       // 执行结果输出
+	Error        string `bson:"error"`        //报错原因
+	PlanTime     int64  `bson:"planTime"`     // 计划开始时间
+	ScheduleTime int64  `bson:"scheduleTime"` //任务调度时间
+	StartTime    int64  `bson:"startTime"`    // 任务开始执行时间
+	EndTime      int64  `bson:"endTime"`      // 任务结束时间
 }
 
 var Schedule *Scheduler
 
 //初始化调度器
-func InitScheduler() error {
+func InitScheduler() {
 	Schedule = &Scheduler{
 		JobEventChan:    make(chan *JobEvent, 1000),
 		JobPlanMap:      make(map[string]*JobSchedulePlan),
@@ -41,8 +55,6 @@ func InitScheduler() error {
 	}
 
 	go Schedule.scheduleLoop()
-
-	return nil
 }
 
 //调度协程
@@ -82,6 +94,14 @@ func (s *Scheduler) HandleJobEvent(event *JobEvent) {
 		if _, ok := Schedule.JobPlanMap[event.job.Name]; ok {
 			delete(Schedule.JobPlanMap, event.job.Name)
 		}
+	case common.JOB_EVENT_KILL: //任务强杀事件
+		//取消command执行  首先判断任务是否正在执行
+		if exe, ok := Schedule.JobExecutingMap[event.job.Name]; ok {
+			//触发command杀死shell子进程 任务退出
+			fmt.Println("kill job : ", exe.Job.Name)
+			exe.CancelFunc()
+		}
+
 	}
 }
 
@@ -156,11 +176,14 @@ func (s *Scheduler) buildSchedulePlan(job *Job) (*JobSchedulePlan, error) {
 
 //构建任务执行状态信息
 func (s *Scheduler) buildJobExecuteInfo(plan *JobSchedulePlan) *JobExecuteInfo {
-	return &JobExecuteInfo{
+	jobExecuteInfo := &JobExecuteInfo{
 		Job:      plan.Job,
 		PlanTime: plan.NextTime,
 		RealTime: time.Now(),
 	}
+	jobExecuteInfo.Ctx, jobExecuteInfo.CancelFunc = context.WithCancel(context.TODO())
+
+	return jobExecuteInfo
 }
 
 //回传任务执行结果
@@ -172,5 +195,23 @@ func (s *Scheduler) pushJobExeRes(res *JobExecuteResult) {
 func (s *Scheduler) handleJobExeRes(res *JobExecuteResult) {
 	//从JobExecuteInfo中删除改条任务执行状态
 	delete(s.JobExecutingMap, res.exeInfo.Job.Name)
-	fmt.Println("任务执行完成 : ", res.exeInfo.Job.Name, string(res.output ), res.startTime, res.endTime)
+
+	// 生成执行日志
+	if res.err != common.ERR_LOCK_ALADY_REQUIRED {
+		log := &JobLog{
+			JobName:      res.exeInfo.Job.Name,
+			Command:      res.exeInfo.Job.Command,
+			OutPut:       string(res.output),
+			PlanTime:     res.exeInfo.PlanTime.UnixNano() / 1000000,
+			ScheduleTime: res.exeInfo.RealTime.UnixNano() / 1000000,
+			StartTime:    res.startTime.UnixNano() / 1000000,
+			EndTime:      res.endTime.UnixNano() / 1000000,
+		}
+
+		if res.err != nil {
+			log.Error = res.err.Error()
+		}
+		// 将日志存储到MongoDB
+		Sink.Append(log)
+	}
 }

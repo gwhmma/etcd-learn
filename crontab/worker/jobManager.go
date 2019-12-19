@@ -71,11 +71,15 @@ func InitEtcdManager(path string) {
 		Watcher: watcher,
 	}
 
-	watchJobs()
+	// 启动任务监听
+	Etcd.watchJobs()
+
+	// 启动监听killer
+	Etcd.watchKiller()
 }
 
 //监听任务变化
-func watchJobs() error {
+func (e *EtcdManager) watchJobs() error {
 	var jobEvent *JobEvent
 	// get /cron/job/下的所有任务，并且获取当前集群的revision
 	getResp, err := Etcd.Kv.Get(context.TODO(), common.JOB_SAVE_DIR, clientv3.WithPrefix())
@@ -117,7 +121,7 @@ func watchJobs() error {
 
 				case mvccpb.DELETE: // 删除了事件
 					// 构建一个删除event
-					job := &Job{Name: common.ExtractJobName(string(w.Kv.Key))}
+					job := &Job{Name: common.ExtractJobName(string(w.Kv.Key), common.JOB_SAVE_DIR)}
 					jobEvent = buildJobEvent(common.JOB_EVENT_DELETE, job)
 					fmt.Println(*jobEvent)
 
@@ -143,5 +147,30 @@ func buildJobEvent(eventType int, job *Job) *JobEvent {
 //创建任务执行锁
 func (e *EtcdManager) createJobLock(jobName string) *jobLock {
 	// 返回一把锁
-	return InitJobLock(jobName, e.Kv, e.Lease )
+	return InitJobLock(jobName, e.Kv, e.Lease)
+}
+
+//监听任务强杀事件
+func (e *EtcdManager) watchKiller() {
+	//监听 /cron/kill/ 目录
+	go func() {
+		watchChan := e.Watcher.Watch(context.TODO(), common.JOB_KILL_DIR, clientv3.WithPrefix())
+
+		//处理监听事件
+		for watchResp := range watchChan {
+			for _, event := range watchResp.Events {
+				switch event.Type {
+				case mvccpb.PUT: //任务杀死事件
+					jobName := common.ExtractJobName(string(event.Kv.Key), common.JOB_KILL_DIR)
+					job := &Job{
+						Name: jobName,
+					}
+					jobEvent := buildJobEvent(common.JOB_EVENT_KILL, job)
+					//把事件推送给scheduler
+					Schedule.PushJobEvent(jobEvent)
+				case mvccpb.DELETE: //任务过期 被自动删除
+				}
+			}
+		}
+	}()
 }
