@@ -139,3 +139,9 @@ func buildJobEvent(eventType int, job *Job) *JobEvent {
 		job:       job,
 	}
 }
+
+//创建任务执行锁
+func (e *EtcdManager) createJobLock(jobName string) *jobLock {
+	// 返回一把锁
+	return InitJobLock(jobName, e.Kv, e.Lease )
+}

@@ -35,17 +35,27 @@ func (e *Executor) executeJob(exeInfo *JobExecuteInfo) {
 			output:  make([]byte, 0),
 		}
 
+		// 首先获取分布式锁
+		// 初始化分布式锁
 		start := time.Now()
-		//执行shell命令
-		cmd := exec.CommandContext(context.TODO(), "/bin/bash", "-c", exeInfo.Job.Command)
-		//执行命令并捕获错误
-		res, err := cmd.CombinedOutput()
+		jobLock := Etcd.createJobLock(exeInfo.Job.Name)
+		err := jobLock.tryLock()
+		defer jobLock.unlock()
 
-		end := time.Now()
-		exeRes.output = res
-		exeRes.err = err
-		exeRes.startTime = start
-		exeRes.endTime = end
+		if err != nil {
+			exeRes.startTime = start
+			exeRes.endTime = time.Now()
+			exeRes.err = err
+		} else {
+			//执行shell命令
+			exeRes.startTime = start
+			cmd := exec.CommandContext(context.TODO(), "/bin/bash", "-c", exeInfo.Job.Command)
+			//执行命令并捕获错误
+			res, err := cmd.CombinedOutput()
+			exeRes.output = res
+			exeRes.err = err
+			exeRes.endTime = time.Now()
+		}
 
 		//任务执行完成后 将执行结果返回给scheduler 并把该条记录从任务列表中删除
 		Schedule.pushJobExeRes(exeRes)
