@@ -144,3 +144,16 @@ func (c *MasterController) JobLog() {
 	c.Data["json"] = Response{Code: 200, Message: "success", Data: jobLog}
 	c.ServeJSON()
 }
+
+// 获取在线的worker节点list
+func (c *MasterController) WorkList() {
+	list, err := WorkerList()
+	if err != nil {
+		c.Data["json"] = Response{Code: 500, Message: err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = Response{Code: 200, Message: "success", Data: list}
+	c.ServeJSON()
+}

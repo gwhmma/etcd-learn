@@ -4,6 +4,7 @@ import (
 	"etcd-learn/crontab/master"
 	_ "etcd-learn/routers"
 	"flag"
+	"fmt"
 	"github.com/astaxie/beego"
 )
 
@@ -17,6 +18,10 @@ func main() {
 	master.InitEnv()
 	master.InitMongo(*mongoConfig)
 	master.InitEtcdManager(*etcdConfig)
+	if err := master.InitWorkerManager(*etcdConfig); err != nil {
+		fmt.Println("work err : ", err)
+		return
+	}
 
 	beego.Run()
 }

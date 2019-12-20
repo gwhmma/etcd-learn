@@ -27,6 +27,11 @@ func main() {
 		return
 	}
 
+	if err := InitRegister(*etcdConfig); err != nil {
+		fmt.Println("register err : ", err)
+		return
+	}
+
 	// 初始化任务执行器
 	InitExecutor()
 
