@@ -34,7 +34,7 @@ type JobEvent struct {
 var Etcd *EtcdManager
 
 //初始化etcd管理器
-func InitEtcdManager(path string) {
+func InitEtcdManager(path string) error {
 	var (
 		client  *clientv3.Client
 		kv      clientv3.KV
@@ -44,8 +44,7 @@ func InitEtcdManager(path string) {
 	)
 
 	if etcdCfg, err = common.LoadEtcdCfg(path); err != nil {
-		fmt.Println("read etcdCfg err : ", err)
-		return
+		return err
 	}
 
 	//初始化配置
@@ -56,7 +55,7 @@ func InitEtcdManager(path string) {
 
 	//建立连接
 	if client, err = clientv3.New(config); err != nil {
-		return
+		return err
 	}
 
 	//得到kv和lease
@@ -76,6 +75,8 @@ func InitEtcdManager(path string) {
 
 	// 启动监听killer
 	Etcd.watchKiller()
+
+	return nil
 }
 
 //监听任务变化

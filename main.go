@@ -13,11 +13,23 @@ var mongoConfig = flag.String("m", "conf/mongo.toml", "mongoDB 配置路径")
 
 func main() {
 	// 初始化master
-	// 初始化线程
 	flag.Parse()
+
+	// 初始化线程
 	master.InitEnv()
-	master.InitMongo(*mongoConfig)
-	master.InitEtcdManager(*etcdConfig)
+
+	//初始化MongoDB
+	if err := master.InitMongo(*mongoConfig); err != nil {
+		fmt.Println("init mongodb err : ", err)
+		return
+	}
+
+	// 初始化etcd
+	if err := master.InitEtcdManager(*etcdConfig); err != nil {
+		fmt.Println("init etcd err : ", err)
+		return
+	}
+
 	if err := master.InitWorkerManager(*etcdConfig); err != nil {
 		fmt.Println("work err : ", err)
 		return

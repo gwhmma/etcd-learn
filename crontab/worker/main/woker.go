@@ -39,7 +39,10 @@ func main() {
 	InitScheduler()
 
 	//初始化任务管理器
-	InitEtcdManager(*etcdConfig)
+	if err := InitEtcdManager(*etcdConfig); err != nil {
+		fmt.Println("init etcd err : ", err)
+		return
+	}
 
 	for {
 		time.Sleep(10 * time.Second)
