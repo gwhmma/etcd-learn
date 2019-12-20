@@ -4,7 +4,6 @@ import (
 	"context"
 	"etcd-learn/crontab/common"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -24,20 +23,14 @@ var Sink *LogSink
 
 func InitLogSink(path string) error {
 	//连接到MongoDB
-	mc, err := common.LoadMongoCfg(path)
-	if err != nil {
-		return err
-	}
-
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mc.MongoAddr[0]))
+	mc, err := common.MongoConn(path)
 	if err != nil {
 		return err
 	}
 
 	Sink = &LogSink{
-		client:         client,
-		collection:     client.Database("cron").Collection("log"),
+		client:         mc.Client,
+		collection:     mc.Collection,
 		logChan:        make(chan *JobLog, 1000),
 		autoCommitChan: make(chan *LogBatch, 1000),
 	}

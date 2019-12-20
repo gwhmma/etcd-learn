@@ -8,12 +8,14 @@ import (
 )
 
 var etcdConfig = flag.String("e", "conf/etcd-master.toml", "etcd的配置文件路径")
+var mongoConfig = flag.String("m", "conf/mongo.toml", "mongoDB 配置路径")
 
 func main() {
 	// 初始化master
 	// 初始化线程
 	flag.Parse()
 	master.InitEnv()
+	master.InitMongo(*mongoConfig)
 	master.InitEtcdManager(*etcdConfig)
 
 	beego.Run()

@@ -107,3 +107,40 @@ func (c *MasterController) KillJob() {
 	c.Data["json"] = Response{Code: 200, Message: "success"}
 	c.ServeJSON()
 }
+
+/*
+查询任务的执行日志
+
+{
+"jobName" : "",
+"skip" : 1,
+"limit" : 2
+}
+ */
+func (c *MasterController) JobLog() {
+	var log Log
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &log); err != nil {
+		c.Data["json"] = Response{Code: 500, Message: err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	if log.Skip == 0 {
+		log.Skip = 10
+	}
+	if log.Limit == 0 {
+		log.Limit = 10
+	}
+
+	//查询日志
+	jobLog, err := JobLogs(&log)
+	if err != nil {
+		c.Data["json"] = Response{Code: 500, Message: err.Error()}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = Response{Code: 200, Message: "success", Data: jobLog}
+	c.ServeJSON()
+}

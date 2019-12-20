@@ -33,14 +33,14 @@ type JobExecuteInfo struct {
 }
 
 type JobLog struct {
-	JobName      string `bson:"jobName"`      //任务名
-	Command      string `bson:"command"`      // 执行的命令
-	OutPut       string `bson:"outPut"`       // 执行结果输出
-	Error        string `bson:"error"`        //报错原因
-	PlanTime     int64  `bson:"planTime"`     // 计划开始时间
-	ScheduleTime int64  `bson:"scheduleTime"` //任务调度时间
-	StartTime    int64  `bson:"startTime"`    // 任务开始执行时间
-	EndTime      int64  `bson:"endTime"`      // 任务结束时间
+	JobName      string `bson:"jobName" json:"jobName"`           //任务名
+	Command      string `bson:"command" json:"command"`           // 执行的命令
+	OutPut       string `bson:"outPut" json:"outPut"`             // 执行结果输出
+	Error        string `bson:"error" json:"error"`               //报错原因
+	PlanTime     int64  `bson:"planTime" json:"planTime"`         // 计划开始时间
+	ScheduleTime int64  `bson:"scheduleTime" json:"scheduleTime"` //任务调度时间
+	StartTime    int64  `bson:"startTime" json:"startTime"`       // 任务开始执行时间
+	EndTime      int64  `bson:"endTime" json:"endTime"`           // 任务结束时间
 }
 
 var Schedule *Scheduler

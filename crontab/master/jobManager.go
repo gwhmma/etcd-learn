@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"etcd-learn/crontab/common"
+	"etcd-learn/crontab/worker"
 	"fmt"
 	"github.com/coreos/etcd/clientv3"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -23,7 +25,14 @@ type Job struct {
 	CronExpr string `json:"cronExpr"` // cron表达式
 }
 
+type Log struct {
+	JobName string `json:"name"`
+	Skip    int64  `json:"skip"`
+	Limit   int64  `json:"limit"`
+}
+
 var Etcd *EtcdManager
+var Mongo *common.Mongo
 
 //初始化etcd管理器
 func InitEtcdManager(path string) {
@@ -60,6 +69,16 @@ func InitEtcdManager(path string) {
 		Kv:     kv,
 		Lease:  lease,
 	}
+}
+
+func InitMongo(path string) error {
+	mc, err := common.MongoConn(path)
+	if err != nil {
+		return err
+	}
+
+	Mongo = mc
+	return nil
 }
 
 // 保存任务到etcd
@@ -147,4 +166,31 @@ func (j *Job) KillJob() error {
 		return err
 	}
 	return nil
+}
+
+// 查询任务执行日志
+func JobLogs(log *Log) ([]*worker.JobLog, error) {
+	jobLogs := make([]*worker.JobLog, 0)
+	// 过滤条件
+	filter := &common.JobFilter{JobName: log.JobName}
+	// 排序规则 按照任务开始时间倒序
+	sort := &common.JobSort{Sort: -1}
+
+	skip := log.Skip
+	limit := log.Limit
+	res, err := Mongo.Collection.Find(context.TODO(), filter, &options.FindOptions{Skip: &skip, Limit: &limit, Sort: sort})
+	if err != nil {
+		return jobLogs , err
+	}
+
+	for res.Next(context.TODO()) {
+		jl := &worker.JobLog{}
+		if err := res.Decode(jl); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		jobLogs = append(jobLogs, jl)
+	}
+
+	return jobLogs, nil
 }

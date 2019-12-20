@@ -234,6 +234,7 @@
             // 请求/job/log接口
             $.ajax({
                 url: "/job/log",
+                type: 'post',
                 dataType: 'json',
                 data: JSON.stringify(jobName),
                 success: function(resp) {
@@ -246,8 +247,8 @@
                         var log = logList[i]
                         var tr = $('<tr>')
                         tr.append($('<td>').html(log.command))
-                        tr.append($('<td>').html(log.err))
-                        tr.append($('<td>').html(log.output))
+                        tr.append($('<td>').html(log.error))
+                        tr.append($('<td>').html(log.outPut))
                         tr.append($('<td>').html(timeFormat(log.planTime)))
                         tr.append($('<td>').html(timeFormat(log.scheduleTime)))
                         tr.append($('<td>').html(timeFormat(log.startTime)))

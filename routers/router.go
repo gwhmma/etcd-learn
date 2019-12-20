@@ -13,4 +13,5 @@ func init() {
 	beego.Router("/job/delete", &controllers.MasterController{}, "post:Delete")
 	beego.Router("/job/jobList", &controllers.MasterController{}, "get:JobList")
 	beego.Router("/job/killJob", &controllers.MasterController{}, "post:KillJob")
+	beego.Router("/job/log", &controllers.MasterController{}, "post:JobLog")
 }
